@@ -10,6 +10,9 @@ ACCESS_FILENAME = ".envault_access.json"
 
 VALID_ROLES = {"read", "write", "admin"}
 
+# Ordered from least to most privileged; used for hierarchy checks.
+_ROLE_HIERARCHY = ["read", "write", "admin"]
+
 
 class AccessDeniedError(PermissionError):
     """Raised when a user lacks the required role."""
@@ -64,9 +67,12 @@ def require_role(vault_dir: Path, username: str, required_role: str) -> None:
 
     Role hierarchy: admin > write > read.
     """
-    hierarchy = ["read", "write", "admin"]
+    if required_role not in VALID_ROLES:
+        raise InvalidRoleError(
+            f"Unknown required role '{required_role}'. Valid roles: {VALID_ROLES}"
+        )
     role = get_role(vault_dir, username)
-    if role is None or hierarchy.index(role) < hierarchy.index(required_role):
+    if role is None or _ROLE_HIERARCHY.index(role) < _ROLE_HIERARCHY.index(required_role):
         raise AccessDeniedError(
             f"User '{username}' requires role '{required_role}' but has '{role}'."
         )
@@ -75,3 +81,13 @@ def require_role(vault_dir: Path, username: str, required_role: str) -> None:
 def list_users(vault_dir: Path) -> Dict[str, str]:
     """Return a mapping of username -> role for all users."""
     return dict(_load(vault_dir))
+
+
+def list_users_with_role(vault_dir: Path, role: str) -> list[str]:
+    """Return a sorted list of usernames that hold exactly *role*.
+
+    Raises InvalidRoleError if *role* is not a recognised role.
+    """
+    if role not in VALID_ROLES:
+        raise InvalidRoleError(f"Unknown role '{role}'. Valid roles: {VALID_ROLES}")
+    return sorted(user for user, r in _load(vault_dir).items() if r == role)
