@@ -48,3 +48,19 @@ def serialise(env: Dict[str, str]) -> str:
             value = '"{}"'.format(value.replace('"', '\\"'))
         lines.append(f"{key}={value}")
     return "\n".join(lines) + "\n" if lines else ""
+
+
+def parse_file(path: str) -> Dict[str, str]:
+    """Read a .env file from *path* and return its contents as a dictionary.
+
+    Args:
+        path: Filesystem path to the ``.env`` file.
+
+    Returns:
+        A dictionary mapping variable names to their string values.
+
+    Raises:
+        OSError: If the file cannot be opened or read.
+    """
+    with open(path, "r", encoding="utf-8") as fh:
+        return parse(fh.read())
